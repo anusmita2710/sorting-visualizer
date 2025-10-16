@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sorting Visualizer — Algorithm Info</title>
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind config before CDN -->
+  <script>
+    tailwind = window.tailwind || {};
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Overall page dark background */
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #02161e; /* page background */
+      color: #e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    /* Visualizer container (bars area) - bluish-black */
+    .bar-container {
+      display: flex;
+      align-items: flex-end;
+      height: 80vh;
+      gap: 1px;
+      padding: 10px;
+      background: linear-gradient(180deg, #021924 0%, #031a28 100%); /* bluish-black */
+      border-radius: .75rem;
+      box-shadow: inset 0 2px 12px rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .array-bar {
+      width: 100%;
+      margin: 0;
+      background-color: transparent; /* allow Tailwind bg-* classes to show */
+      transition: background-color .12s, height .12s;
+      min-height: 1px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+      /* subtle top highlight so light bars read well on dark background */
+      border-top: 1px solid rgba(255,255,255,0.03);
+    }
+
+    /* Make the main card itself bluish-black instead of white */
+    .card {
+      background: linear-gradient(180deg, #042733 0%, #02161e 100%);
+      color: #e6eef8;
+    }
+
+    /* Modal backdrop and modal content tuned for dark theme */
+    .modal-backdrop { background: rgba(2,6,23,0.65); }
+    .modal-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
+    .modal-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 6px; }
+
+    /* Override commonly used light Tailwind utility classes inside the card to dark equivalents */
+    .card .bg-gray-50 { background-color: rgba(255,255,255,0.03) !important; }
+    .card .bg-white { background-color: rgba(255,255,255,0.02) !important; }
+    .card .border-gray-200 { border-color: rgba(255,255,255,0.04) !important; }
+    .card .border-gray-300 { border-color: rgba(255,255,255,0.05) !important; }
+    .card .text-gray-700 { color: #e6eef8 !important; }
+    .card .text-gray-500 { color: #9fb6c4 !important; }
+    .card .text-gray-400 { color: #7ea3b6 !important; }
+    .card .shadow-inner { box-shadow: inset 0 1px 3px rgba(0,0,0,0.6) !important; }
+
+    /* Inputs / selects */
+    .card input[type="number"],
+    .card input[type="range"],
+    .card select,
+    .card textarea {
+      background: rgba(255,255,255,0.02);
+      color: #e6eef8;
+      border-color: rgba(255,255,255,0.06);
+    }
+    .card textarea::placeholder { color: rgba(230,238,248,0.55); }
+
+    /* --- New: force select & option text to black so dropdown items are readable --- */
+    /* Many styles in .card were making text light; override for selects/options specifically */
+    .card select {
+      color: #111827 !important;             /* selected value text (when closed) */
+      background-color: #ffffff !important;  /* make the select control background white for contrast */
+    }
+    /* Options: browsers differ in how much they allow styling; set both color & background */
+    .card select option,
+    .card select optgroup {
+      color: #111827 !important;             /* options text (when dropdown open) */
+      background-color: #ffffff !important;  /* ensure options have white bg */
+    }
+    /* Keep a softer color for disabled options (if any) */
+    .card select option:disabled {
+      color: #9ca3af !important; /* gray-400-ish for disabled entries */
+    }
+    /* For WebKit - make the native dropdown arrow visible and keep it consistent */
+    .card select::-ms-expand { display: inline-block; } /* IE/Edge */
+    .card select::-webkit-appearance: none;
+    .card .select-wrapper { position: relative; }
+
+    /* Buttons: keep emphasis colors but ensure contrast on dark card */
+    .card .bg-indigo-600 { background-color: #4c51bf !important; }
+    .card .bg-indigo-700 { background-color: #3c46a1 !important; }
+    .card .bg-green-500 { background-color: #16a34a !important; }
+    .card .bg-red-600 { background-color: #dc2626 !important; }
+    .card .bg-gray-200 { background-color: rgba(255,255,255,0.04) !important; color: #e6eef8 !important; }
+
+    /* Footer link */
+    .card a#authorLink { color: #9ad0ff; text-decoration: none; }
+    .card a#authorLink:hover { color: #d6f6ff; }
+
+    /* Make modal content darker (background) */
+    .modal-scrollbar > .relative {
+      background: linear-gradient(180deg,#06202a, #072022);
+      color: #e6eef8;
+    }
+
+    /* Force explanation/modal text to be pure black for readability on white modal cards */
+    .modal-scrollbar #algoModalTitle,
+    .modal-scrollbar #algoDescription,
+    .modal-scrollbar #algoTime,
+    .modal-scrollbar #algoSpace,
+    .modal-scrollbar #algoStable,
+    .modal-scrollbar #algoWhen,
+    .modal-scrollbar #algoSteps {
+      color: #111827 !important; /* Tailwind's gray-900 / near-black */
+    }
+
+    /* Ensure small helper labels in modal use a darker gray (not the bluish overrides) */
+    .modal-scrollbar .text-xs.text-gray-500,
+    .modal-scrollbar .text-sm.text-gray-700 {
+      color: #4b5563 !important; /* gray-700 */
+    }
+
+    /* Visual contrast for bar colors (Tailwind classes mapping) */
+    /* Make default bars light blue for better visibility on the dark background */
+    .bg-blue-400 { background-color: #60a5fa !important; } /* light blue bars (Tailwind blue-400) */
+    .bg-amber-400 { background-color: #f59e0b !important; } /* compare */
+    .bg-rose-500 { background-color: #fb7185 !important; } /* swap */
+    .bg-violet-500 { background-color: #8b5cf6 !important; } /* pivot */
+    .bg-teal-400 { background-color: #2dd4bf !important; } /* sorted */
+
+    /* Small screens: reduce visualizer height a bit */
+    @media (max-width: 640px) {
+      .bar-container { height: 60vh; }
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8 font-sans">
+  <div class="max-w-7xl mx-auto card rounded-2xl shadow-2xl p-6">
+    <header class="mb-6">
+      <h1 class="text-3xl md:text-4xl font-extrabold">Sorting Visualizer</h1>
+      <p class="text-sm text-gray-500 mt-1">Interactive visualization of common sorting algorithms</p>
+    </header>
+
+    <!-- Controls -->
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 p-4 bg-gray-50 rounded-lg shadow-inner items-center">
+      <div class="md:col-span-2">
+        <label class="flex items-center text-sm font-medium text-gray-700 mb-1">
+          <span class="mr-2">Select Algorithm</span>
+          <button id="algoInfoBtn" title="Explain the selected algorithm" class="ml-2 inline-flex items-center justify-center px-3 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300" aria-haspopup="dialog" aria-controls="algoModal" aria-label="Explain selected algorithm"> Explain Sort </button>
+        </label>
+        <!-- Wrapped the select with a small wrapper in case you want a custom arrow later -->
+        <div class="select-wrapper">
+          <select id="algorithm" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="bubble">Bubble Sort</option>
+            <option value="insertion">Insertion Sort</option>
+            <option value="selection">Selection Sort</option>
+            <option value="quick">Quick Sort</option>
+            <option value="merge">Merge Sort</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Array size -->
+      <div>
+        <label for="arraySize" class="block text-sm font-medium text-gray-700 mb-1">Array Size (2-100)</label>
+        <input id="arraySize" type="number" min="2" max="100" value="50" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" />
+      </div>
+
+      <!-- Speed -->
+      <div>
+        <label for="speed" class="block text-sm font-medium text-gray-700 mb-1">Speed (Delay ms)</label>
+        <input id="speed" type="range" min="5" max="500" value="10" class="w-full h-8 rounded-lg" />
+        <div class="text-xs text-gray-500 text-center mt-1" id="speedValue">10 ms</div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="flex flex-col space-y-2 items-stretch">
+        <button id="generateArray" class="w-full p-3 bg-indigo-600 text-white font-semibold rounded-lg shadow hover:bg-indigo-700 transition">Generate New Array</button>
+        <button id="startSort" class="w-full p-3 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition">Start Sort</button>
+      </div>
+    </div>
+
+    <!-- Custom array input -->
+    <div class="mb-6 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+      <label for="customArrayInput" class="block text-sm font-medium text-gray-700 mb-2">Enter custom array (comma separated)</label>
+      <div class="flex flex-col md:flex-row md:items-start gap-3">
+        <textarea id="customArrayInput" rows="2" placeholder="e.g. 34, 12, 78, 5, 90" class="w-full md:w-3/4 p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 resize-none"></textarea>
+        <div class="flex flex-col space-y-2 md:w-1/4">
+          <button id="applyArrayButton" class="w-full p-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition">Use Array</button>
+          <button id="clearArrayButton" class="w-full p-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">Clear</button>
+        </div>
+      </div>
+      <div id="customArrayHint" class="text-xs text-gray-500 mt-2">Values should be numbers (2–100 items). Values will be clamped to 1–100 for visualization heights.</div>
+    </div>
+
+    <!-- Visualization -->
+    <div class="grid grid-cols-1 gap-6">
+      <div id="visualizer" class="bar-container border border-gray-300 shadow-xl"></div>
+    </div>
+
+    <footer class="mt-4 text-center text-sm text-gray-400"> Made by <a href="#" id="authorLink" class="hover:text-indigo-600">Anusmita Dey</a> </footer>
+  </div>
+
+  <!-- Algorithm modal (hidden by default) -->
+  <div id="algoModal" class="fixed inset-0 z-50 hidden items-center justify-center" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop absolute inset-0"></div>
+    <div class="relative max-w-2xl w-full mx-4 md:mx-0 bg-white rounded-lg shadow-lg z-50 overflow-auto modal-scrollbar" style="max-height:85vh;">
+      <div class="flex items-start justify-between p-4 border-b">
+        <h2 id="algoModalTitle" class="text-lg font-semibold text-gray-900">Algorithm</h2>
+        <button id="algoModalClose" class="ml-4 p-1 rounded-full text-gray-500 hover:bg-gray-100 focus:outline-none" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 8.586l4.95-4.95 1.414 1.414L11.414 10l4.95 4.95-1.414 1.414L10 11.414l-4.95 4.95-1.414-1.414L8.586 10 3.636 5.05 5.05 3.636 10 8.586z" clip-rule="evenodd"/>
+          </svg>
+        </button>
+      </div>
+      <div class="p-4 space-y-4">
+        <p id="algoDescription" class="text-sm text-gray-700"></p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="p-3 bg-gray-50 rounded">
+            <div class="text-xs text-gray-500 mb-1">Time Complexity</div>
+            <div id="algoTime" class="text-sm font-medium text-gray-800"></div>
+          </div>
+          <div class="p-3 bg-gray-50 rounded">
+            <div class="text-xs text-gray-500 mb-1">Space</div>
+            <div id="algoSpace" class="text-sm font-medium text-gray-800"></div>
+          </div>
+          <div class="p-3 bg-gray-50 rounded">
+            <div class="text-xs text-gray-500 mb-1">Stability</div>
+            <div id="algoStable" class="text-sm font-medium text-gray-800"></div>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 mb-1">When to use</div>
+          <div id="algoWhen" class="text-sm text-gray-700"></div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 mb-1">Quick steps / overview</div>
+          <pre id="algoSteps" class="whitespace-pre-wrap text-sm text-gray-700 bg-gray-50 p-3 rounded"></pre>
+        </div>
+      </div>
+      <div class="p-3 border-t text-right">
+        <button id="algoModalOk" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DOM refs
+    const algoInfoBtn = document.getElementById('algoInfoBtn');
+    const algoModal = document.getElementById('algoModal');
+    const algoModalClose = document.getElementById('algoModalClose');
+    const algoModalOk = document.getElementById('algoModalOk');
+    const algoModalTitle = document.getElementById('algoModalTitle');
+    const algoDescription = document.getElementById('algoDescription');
+    const algoTime = document.getElementById('algoTime');
+    const algoSpace = document.getElementById('algoSpace');
+    const algoStable = document.getElementById('algoStable');
+    const algoWhen = document.getElementById('algoWhen');
+    const algoSteps = document.getElementById('algoSteps');
+    const algorithmSelector = document.getElementById('algorithm');
+
+    // Visualization / control refs
+    const visualizer = document.getElementById('visualizer');
+    const arraySizeInput = document.getElementById('arraySize');
+    const speedInput = document.getElementById('speed');
+    const speedValue = document.getElementById('speedValue');
+    const generateArrayBtn = document.getElementById('generateArray');
+    const startSortBtn = document.getElementById('startSort');
+    const customArrayInput = document.getElementById('customArrayInput');
+    const applyArrayButton = document.getElementById('applyArrayButton');
+    const clearArrayButton = document.getElementById('clearArrayButton');
+
+    // Colors (Tailwind classes) - chosen for good contrast on the bluish-black visualizer
+    const DEFAULT_COLOR = 'bg-blue-400'; // light blue bars (changed from bg-blue-900)
+    const COMPARE_COLOR = 'bg-amber-400'; // yellowish compare
+    const SWAP_COLOR = 'bg-rose-500'; // red for swap
+    const PIVOT_COLOR = 'bg-violet-500'; // pivot highlight
+    const SORTED_COLOR = 'bg-teal-400'; // sorted highlight
+
+    // state
+    let arr = [];
+    let isSorting = false;
+    let animationDelay = parseInt(speedInput.value, 10) || 10;
+
+    // algorithm metadata
+    const algorithmMetadata = {
+      bubble: {
+        name: 'Bubble Sort',
+        description: 'Bubble Sort repeatedly compares adjacent pairs and swaps them if they are in the wrong order. It "bubbles" large values towards the end each pass.',
+        time: { best: 'O(n)', average: 'O(n²)', worst: 'O(n²)' },
+        space: 'O(1) extra (in-place)',
+        stable: 'Yes (stable)',
+        when: 'Good for learning, tiny arrays, or nearly sorted data.',
+        steps: [ 'Repeat passes', 'Compare adjacent and swap', 'Largest moves to end each pass' ]
+      },
+      insertion: {
+        name: 'Insertion Sort',
+        description: 'Insertion Sort builds the sorted array one item at a time by inserting each element into its correct position among previously sorted elements.',
+        time: { best: 'O(n)', average: 'O(n²)', worst: 'O(n²)' },
+        space: 'O(1) extra',
+        stable: 'Yes',
+        when: 'Small or nearly-sorted arrays.',
+        steps: [ 'Iterate from second element', 'Insert element into sorted portion' ]
+      },
+      selection: {
+        name: 'Selection Sort',
+        description: 'Selection Sort repeatedly selects the minimum (or maximum) from the unsorted portion and swaps it into the next sorted position.',
+        time: { best: 'O(n²)', average: 'O(n²)', worst: 'O(n²)' },
+        space: 'O(1)',
+        stable: 'No',
+        when: 'Simple tasks; memory-write sensitive environments.',
+        steps: [ 'Find min in unsorted range', 'Swap into position' ]
+      },
+      quick: {
+        name: 'Quick Sort',
+        description: 'Quick Sort partitions and recursively sorts partitions; average O(n log n).',
+        time: { best: 'O(n log n)', average: 'O(n log n)', worst: 'O(n²)' },
+        space: 'O(log n) recursion',
+        stable: 'No',
+        when: 'Large arrays, random pivot recommended',
+        steps: [ 'Choose pivot', 'Partition', 'Recursively sort partitions' ]
+      },
+      merge: {
+        name: 'Merge Sort',
+        description: 'Merge Sort divides array and merges sorted halves; stable O(n log n).',
+        time: { best: 'O(n log n)', average: 'O(n log n)', worst: 'O(n log n)' },
+        space: 'O(n) extra',
+        stable: 'Yes',
+        when: 'When stability or guaranteed performance is needed',
+        steps: [ 'Divide', 'Sort halves', 'Merge' ]
+      }
+    };
+
+    // ----- UTILITIES -----
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    function render(arrayToRender = arr, defaultClass = DEFAULT_COLOR) {
+      visualizer.innerHTML = '';
+      if (!arrayToRender || arrayToRender.length === 0) return;
+      const barWidth = 100 / arrayToRender.length;
+      arrayToRender.forEach(v => {
+        const bar = document.createElement('div');
+        // allow tailwind bg-* classes to define color (no hardcoded CSS background)
+        bar.className = `array-bar rounded-t-sm ${defaultClass}`;
+        const h = Math.max(1, Math.min(100, Number(v) || 1));
+        bar.style.height = h + '%';
+        bar.style.width = barWidth + '%';
+        visualizer.appendChild(bar);
+      });
+    }
+
+    async function updateBars(indices, colorClass, newValues = []) {
+      // Allow final sorted color updates even if not sorting
+      if (!isSorting && colorClass !== SORTED_COLOR) return;
+      const bars = visualizer.children;
+      indices.forEach((i, idx) => {
+        if (bars[i]) {
+          // replace any bg-* class with the colorClass; keep array-bar and rounded classes
+          // simple approach: set className to base plus the colorClass
+          bars[i].className = 'array-bar rounded-t-sm ' + colorClass;
+          if (newValues[idx] !== undefined) {
+            arr[i] = newValues[idx];
+            bars[i].style.height = `${arr[i]}%`;
+          }
+        }
+      });
+      await sleep(animationDelay);
+      if (colorClass !== SORTED_COLOR) {
+        indices.forEach(i => {
+          if (bars[i]) bars[i].className = 'array-bar rounded-t-sm ' + DEFAULT_COLOR;
+        });
+      }
+    }
+
+    async function swap(i, j) {
+      if (i === j) return;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      await updateBars([i, j], SWAP_COLOR, [arr[i], arr[j]]);
+    }
+
+    // ----- SORTS (visualized) -----
+    async function bubbleSort() {
+      let n = arr.length;
+      for (let i = 0; i < n - 1; i++) {
+        for (let j = 0; j < n - i - 1; j++) {
+          await updateBars([j, j + 1], COMPARE_COLOR);
+          if (arr[j] > arr[j + 1]) {
+            await swap(j, j + 1);
+          }
+          if (!isSorting) return;
+        }
+        await updateBars([n - 1 - i], SORTED_COLOR);
+      }
+      await updateBars([0], SORTED_COLOR);
+    }
+
+    async function insertionSort() {
+      let n = arr.length;
+      await updateBars([0], SORTED_COLOR);
+      for (let i = 1; i < n; i++) {
+        let key = arr[i];
+        let j = i - 1;
+        while (j >= 0 && arr[j] > key) {
+          await updateBars([j, j + 1], COMPARE_COLOR);
+          if (!isSorting) return;
+          await updateBars([j + 1], SWAP_COLOR, [arr[j]]);
+          j = j - 1;
+        }
+        arr[j + 1] = key;
+        await updateBars([j + 1], SWAP_COLOR, [key]);
+        await updateBars(Array.from({ length: i + 1 }, (_, k) => k), SORTED_COLOR);
+      }
+      await updateBars(Array.from({ length: arr.length }, (_, k) => k), SORTED_COLOR);
+    }
+
+    async function selectionSort() {
+      let n = arr.length;
+      for (let i = 0; i < n - 1; i++) {
+        let min_idx = i;
+        await updateBars([min_idx], PIVOT_COLOR);
+        for (let j = i + 1; j < n; j++) {
+          await updateBars([j], COMPARE_COLOR);
+          if (!isSorting) return;
+          if (arr[j] < arr[min_idx]) {
+            await updateBars([min_idx], DEFAULT_COLOR);
+            min_idx = j;
+            await updateBars([min_idx], PIVOT_COLOR);
+          } else {
+            await updateBars([j], DEFAULT_COLOR);
+          }
+        }
+        if (min_idx !== i) await swap(i, min_idx);
+        await updateBars([i], SORTED_COLOR);
+      }
+      await updateBars([arr.length - 1], SORTED_COLOR);
+    }
+
+    async function partition(low, high) {
+      let pivot = arr[high];
+      await updateBars([high], PIVOT_COLOR);
+      let i = low - 1;
+      for (let j = low; j <= high - 1; j++) {
+        await updateBars([j], COMPARE_COLOR);
+        if (!isSorting) return high + 1;
+        if (arr[j] < pivot) {
+          i++;
+          await swap(i, j);
+        }
+        await updateBars([j], DEFAULT_COLOR);
+      }
+      await swap(i + 1, high);
+      return i + 1;
+    }
+
+    async function quickSort(low, high) {
+      if (!isSorting) return;
+      if (low < high) {
+        let pi = await partition(low, high);
+        if (!isSorting) return;
+        await updateBars([pi], SORTED_COLOR);
+        await quickSort(low, pi - 1);
+        await quickSort(pi + 1, high);
+      } else if (low === high) {
+        await updateBars([low], SORTED_COLOR);
+      }
+    }
+
+    async function merge(p, q, r) {
+      let n1 = q - p + 1;
+      let n2 = r - q;
+      let L = new Array(n1);
+      let R = new Array(n2);
+      for (let i = 0; i < n1; i++) {
+        L[i] = arr[p + i];
+        await updateBars([p + i], COMPARE_COLOR);
+      }
+      for (let j = 0; j < n2; j++) {
+        R[j] = arr[q + j + 1];
+        await updateBars([q + j + 1], PIVOT_COLOR);
+      }
+      let i = 0, j = 0, k = p;
+      while (i < n1 && j < n2) {
+        if (L[i] <= R[j]) {
+          arr[k] = L[i];
+          i++;
+        } else {
+          arr[k] = R[j];
+          j++;
+        }
+        await updateBars([k], SWAP_COLOR, [arr[k]]);
+        if (!isSorting) return;
+        k++;
+      }
+      while (i < n1) {
+        await updateBars([k], SWAP_COLOR, [L[i]]);
+        arr[k] = L[i];
+        i++;
+        k++;
+        if (!isSorting) return;
+      }
+      while (j < n2) {
+        await updateBars([k], SWAP_COLOR, [R[j]]);
+        arr[k] = R[j];
+        j++;
+        k++;
+        if (!isSorting) return;
+      }
+      for (let idx = p; idx <= r; idx++) {
+        await updateBars([idx], DEFAULT_COLOR);
+      }
+    }
+
+    async function mergeSort(p, r) {
+      if (p >= r) return;
+      if (!isSorting) return;
+      let q = p + Math.floor((r - p) / 2);
+      await mergeSort(p, q);
+      await mergeSort(q + 1, r);
+      await merge(p, q, r);
+    }
+
+    // ----- START / STOP & wiring -----
+    function openAlgoModal(key) {
+      const meta = algorithmMetadata[key];
+      if (!meta) return;
+      algoModalTitle.textContent = meta.name;
+      algoDescription.textContent = meta.description;
+      algoTime.innerHTML = `<div class="text-xs text-gray-500">Best</div><div class="font-medium">${meta.time.best}</div>
+        <div class="text-xs text-gray-500 mt-2">Average</div><div class="font-medium">${meta.time.average}</div>
+        <div class="text-xs text-gray-500 mt-2">Worst</div><div class="font-medium">${meta.time.worst}</div>`;
+      algoSpace.textContent = meta.space;
+      algoStable.textContent = meta.stable;
+      algoWhen.textContent = meta.when;
+      algoSteps.textContent = meta.steps || meta.steps;
+      algoModal.classList.remove('hidden');
+      algoModal.classList.add('flex');
+      algoModal.setAttribute('aria-hidden','false');
+      algoModalOk.focus();
+    }
+
+    function closeAlgoModal() {
+      algoModal.classList.add('hidden');
+      algoModal.classList.remove('flex');
+      algoModal.setAttribute('aria-hidden','true');
+      algoInfoBtn.focus();
+    }
+
+    algoInfoBtn.addEventListener('click', () => openAlgoModal(algorithmSelector.value));
+    algoModalClose.addEventListener('click', closeAlgoModal);
+    algoModalOk.addEventListener('click', closeAlgoModal);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !algoModal.classList.contains('hidden')) closeAlgoModal(); });
+    algoModal.addEventListener('click', (e) => { if (e.target === algoModal) closeAlgoModal(); });
+
+    speedInput.addEventListener('input', (e) => {
+      animationDelay = parseInt(e.target.value,10);
+      speedValue.textContent = animationDelay + ' ms';
+    });
+
+    function makeRandomArray(size) {
+      size = Math.max(2, Math.min(100, Number(size) || 50));
+      arr = [];
+      for (let i=0;i<size;i++) arr.push(Math.floor(Math.random()*95)+5);
+      render();
+    }
+
+    generateArrayBtn.addEventListener('click', () => {
+      if (isSorting) return;
+      customArrayInput.value = '';
+      makeRandomArray(arraySizeInput.value);
+    });
+
+    applyArrayButton.addEventListener('click', () => {
+      if (isSorting) { alert('Stop the current sort before applying a custom array'); return; }
+      const raw = customArrayInput.value || '';
+      const parts = raw.split(',').map(s=>s.trim()).filter(Boolean);
+      if (parts.length < 2) { alert('Enter at least 2 numbers.'); return; }
+      if (parts.length > 100) { alert('Max 100 items allowed.'); return; }
+      const values = parts.map(p => { const n = Number(p); return isFinite(n) ? Math.round(n) : NaN; });
+      if (values.some(v => isNaN(v))) { alert('Invalid numbers in input.'); return; }
+      arr = values.map(v => Math.max(1, Math.min(100, v)));
+      arraySizeInput.value = arr.length;
+      render();
+    });
+
+    clearArrayButton.addEventListener('click', () => { if (isSorting) return; customArrayInput.value = ''; });
+
+    // Main start/stop routine
+    async function startSorting() {
+      if (isSorting) {
+        // request stop
+        isSorting = false;
+        startSortBtn.textContent = 'Start Sort';
+        startSortBtn.classList.remove('bg-red-600');
+        startSortBtn.classList.add('bg-green-500');
+
+        // re-enable controls
+        generateArrayBtn.disabled = false;
+        algorithmSelector.disabled = false;
+        arraySizeInput.disabled = false;
+        applyArrayButton.disabled = false;
+        customArrayInput.disabled = false;
+        clearArrayButton.disabled = false;
+        return;
+      }
+
+      // prepare
+      if (!arr || arr.length < 2) makeRandomArray(parseInt(arraySizeInput.value,10));
+      isSorting = true;
+      startSortBtn.textContent = 'Stop Sort';
+      startSortBtn.classList.remove('bg-green-500');
+      startSortBtn.classList.add('bg-red-600');
+
+      // disable controls while sorting
+      generateArrayBtn.disabled = true;
+      algorithmSelector.disabled = true;
+      arraySizeInput.disabled = true;
+      applyArrayButton.disabled = true;
+      customArrayInput.disabled = true;
+      clearArrayButton.disabled = true;
+
+      const algorithm = algorithmSelector.value;
+      try {
+        render();
+        switch (algorithm) {
+          case 'bubble': await bubbleSort(); break;
+          case 'insertion': await insertionSort(); break;
+          case 'selection': await selectionSort(); break;
+          case 'quick': await quickSort(0, arr.length - 1); break;
+          case 'merge': await mergeSort(0, arr.length - 1); break;
+          default: await bubbleSort(); break;
+        }
+        if (isSorting) {
+          // mark fully sorted if finished normally
+          await updateBars(Array.from({ length: arr.length }, (_, k) => k), SORTED_COLOR);
+        }
+      } catch (err) {
+        console.error('Sorting error', err);
+        alert('An error occurred during sorting. See console.');
+      } finally {
+        // cleanup / restore
+        isSorting = false;
+        startSortBtn.textContent = 'Start Sort';
+        startSortBtn.classList.remove('bg-red-600');
+        startSortBtn.classList.add('bg-green-500');
+        generateArrayBtn.disabled = false;
+        algorithmSelector.disabled = false;
+        arraySizeInput.disabled = false;
+        applyArrayButton.disabled = false;
+        customArrayInput.disabled = false;
+        clearArrayButton.disabled = false;
+      }
+    }
+
+    startSortBtn.addEventListener('click', startSorting);
+
+    // init
+    window.addEventListener('load', () => {
+      makeRandomArray(50);
+      speedValue.textContent = animationDelay + ' ms';
+    });
+  </script>
+</body>
+</html>
